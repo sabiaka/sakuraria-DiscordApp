@@ -53,9 +53,15 @@ async def gen(interaction: discord.Interaction, semester: int, class_count: int)
         student_category_name = f"👨‍🎓 {semester}期生徒"
         student_category = await interaction.guild.create_category(student_category_name)
         
+        # 期全体の連絡チャンネルを作成
+        await interaction.guild.create_text_channel(
+            name=f"📢｜{semester}期連絡",
+            category=student_category
+        )
+        
         # 教員用チャンネルの作成
         for i in range(1, class_count + 1):
-            channel_name = f"📝 {semester}-{i}教員"
+            channel_name = f"📝｜{semester}-{i}教員"
             await interaction.guild.create_text_channel(
                 name=channel_name,
                 category=teacher_category
@@ -65,17 +71,17 @@ async def gen(interaction: discord.Interaction, semester: int, class_count: int)
         for i in range(1, class_count + 1):
             # 雑談チャンネル
             await interaction.guild.create_text_channel(
-                name=f"💬 {semester}-{i}雑談",
+                name=f"💬｜{semester}-{i}雑談",
                 category=student_category
             )
             # 写真チャンネル
             await interaction.guild.create_text_channel(
-                name=f"📸 {semester}-{i}写真",
+                name=f"📸｜{semester}-{i}写真",
                 category=student_category
             )
             # 連絡チャンネル
             await interaction.guild.create_text_channel(
-                name=f"📢 {semester}-{i}連絡",
+                name=f"📢｜{semester}-{i}連絡",
                 category=student_category
             )
         
@@ -84,6 +90,7 @@ async def gen(interaction: discord.Interaction, semester: int, class_count: int)
             f'📁 {teacher_category_name}\n'
             f'  └ {class_count}個の教員用チャンネル\n'
             f'📁 {student_category_name}\n'
+            f'  └ 期全体連絡チャンネル\n'
             f'  └ {class_count}クラス × 3チャンネル（雑談・写真・連絡）'
         )
     
