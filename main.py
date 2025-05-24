@@ -43,7 +43,31 @@ async def gen(interaction: discord.Interaction, semester: int, class_count: int)
 
     try:
         # 処理開始を通知
-        await interaction.response.send_message('チャンネルを作成中です...')
+        await interaction.response.send_message('チャンネルとロールを作成中です...')
+        
+        # 期全体のロールを作成
+        semester_student_role = await interaction.guild.create_role(
+            name=f"{semester}期生",
+            color=discord.Color.blue(),
+        )
+        semester_teacher_role = await interaction.guild.create_role(
+            name=f"{semester}期職員",
+            color=discord.Color.green()
+        )
+        
+        # クラスごとのロールを作成
+        class_roles = []
+        for i in range(1, class_count + 1):
+            student_role = await interaction.guild.create_role(
+                name=f"{semester}-{i}生徒",
+                color=discord.Color.blue(),
+                hoist=True  # オンラインメンバーとは別にロールメンバーを表示
+            )
+            teacher_role = await interaction.guild.create_role(
+                name=f"{semester}-{i}職員",
+                color=discord.Color.green()
+            )
+            class_roles.extend([student_role, teacher_role])
         
         # 教員用カテゴリの作成
         teacher_category_name = f"👨‍🏫 {semester}期職員"
@@ -86,12 +110,16 @@ async def gen(interaction: discord.Interaction, semester: int, class_count: int)
             )
         
         await interaction.followup.send(
-            f'✅ 以下のカテゴリとチャンネルを作成しました：\n'
+            f'✅ 以下のカテゴリ、チャンネル、ロールを作成しました：\n'
             f'📁 {teacher_category_name}\n'
             f'  └ {class_count}個の教員用チャンネル\n'
             f'📁 {student_category_name}\n'
             f'  └ 期全体連絡チャンネル\n'
-            f'  └ {class_count}クラス × 3チャンネル（雑談・写真・連絡）'
+            f'  └ {class_count}クラス × 3チャンネル（雑談・写真・連絡）\n'
+            f'👥 ロール\n'
+            f'  └ {semester}期生\n'
+            f'  └ {semester}期職員\n'
+            f'  └ {class_count}クラス × 2ロール（生徒・職員）'
         )
     
     except discord.Forbidden:
@@ -121,8 +149,10 @@ async def delete(interaction: discord.Interaction, start_semester: int, end_seme
         if start_semester > end_semester:
             start_semester, end_semester = end_semester, start_semester
 
-        # 削除対象のカテゴリを検索
+        # 削除対象のカテゴリとロールを検索
         categories_to_delete = []
+        roles_to_delete = []
+        
         for semester in range(start_semester, end_semester + 1):
             # 教員用カテゴリの検索（結合された絵文字と分解された絵文字の両方に対応）
             teacher_category = discord.utils.get(interaction.guild.categories, name=f"👨‍🏫 {semester}期職員")
@@ -138,10 +168,25 @@ async def delete(interaction: discord.Interaction, start_semester: int, end_seme
                 categories_to_delete.append(("教員", teacher_category))
             if student_category:
                 categories_to_delete.append(("生徒", student_category))
+            
+            # ロールの検索
+            semester_student_role = discord.utils.get(interaction.guild.roles, name=f"{semester}期生")
+            semester_teacher_role = discord.utils.get(interaction.guild.roles, name=f"{semester}期職員")
+            
+            if semester_student_role:
+                roles_to_delete.append(("期生", semester_student_role))
+            if semester_teacher_role:
+                roles_to_delete.append(("期職員", semester_teacher_role))
+            
+            # クラスごとのロールを検索
+            for role in interaction.guild.roles:
+                if role.name.startswith(f"{semester}-") and (role.name.endswith("生徒") or role.name.endswith("職員")):
+                    role_type = "生徒" if role.name.endswith("生徒") else "職員"
+                    roles_to_delete.append((f"クラス{role_type}", role))
 
-        if not categories_to_delete:
+        if not categories_to_delete and not roles_to_delete:
             await interaction.response.send_message(
-                f'❌ {start_semester}期から{end_semester}期のカテゴリが見つかりません。'
+                f'❌ {start_semester}期から{end_semester}期のカテゴリとロールが見つかりません。'
             )
             return
 
@@ -166,10 +211,13 @@ async def delete(interaction: discord.Interaction, start_semester: int, end_seme
         # 確認メッセージを送信
         view = ConfirmView()
         category_list = "\n".join([f"- {type_}用カテゴリ「{category.name}」" for type_, category in categories_to_delete])
+        role_list = "\n".join([f"- {type_}ロール「{role.name}」" for type_, role in roles_to_delete])
+        
         await interaction.response.send_message(
             f"⚠️ 本当に削除しますか？\n"
-            f"以下のカテゴリとその中のすべてのチャンネルが削除されます：\n"
+            f"以下のカテゴリとその中のすべてのチャンネル、およびロールが削除されます：\n"
             f"{category_list}\n"
+            f"{role_list}\n"
             f"この操作は取り消せません。",
             view=view
         )
@@ -189,9 +237,16 @@ async def delete(interaction: discord.Interaction, start_semester: int, end_seme
                 await category.delete()
                 deleted_categories.append(f"{type_}用カテゴリ「{category.name}」")
             
+            # ロールを削除
+            deleted_roles = []
+            for type_, role in roles_to_delete:
+                await role.delete()
+                deleted_roles.append(f"{type_}ロール「{role.name}」")
+            
             await interaction.followup.send(
-                f'✅ 以下のカテゴリとその中のチャンネルを削除しました：\n'
-                f'{chr(10).join(deleted_categories)}'
+                f'✅ 以下のカテゴリ、チャンネル、ロールを削除しました：\n'
+                f'{chr(10).join(deleted_categories)}\n'
+                f'{chr(10).join(deleted_roles)}'
             )
         else:
             await interaction.followup.send('❌ 削除をキャンセルしました。')
