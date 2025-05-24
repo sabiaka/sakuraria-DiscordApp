@@ -3,6 +3,8 @@ from discord import app_commands
 from discord.ext import commands
 import os
 from dotenv import load_dotenv
+import traceback
+import sys
 
 # 環境変数の読み込み
 load_dotenv(dotenv_path='.env')  # 明示的に.envファイルを指定
@@ -123,9 +125,25 @@ async def gen(interaction: discord.Interaction, semester: int, class_count: int)
         )
     
     except discord.Forbidden:
-        await interaction.followup.send('❌ ボットに必要な権限がありません。')
+        error_msg = (
+            "❌ ボットに必要な権限がありません。\n"
+            "必要な権限:\n"
+            "- チャンネルの管理\n"
+            "- ロールの管理\n"
+            "- カテゴリの管理"
+        )
+        await interaction.followup.send(error_msg)
     except Exception as e:
-        await interaction.followup.send(f'❌ エラーが発生しました: {str(e)}')
+        error_type = type(e).__name__
+        error_msg = str(e)
+        tb = traceback.format_exc()
+        error_details = (
+            f"❌ エラーが発生しました:\n"
+            f"エラーの種類: {error_type}\n"
+            f"エラーメッセージ: {error_msg}\n"
+            f"```\n{tb}\n```"
+        )
+        await interaction.followup.send(error_details)
 
 
 # カテゴリとチャンネルを削除するコマンド
@@ -252,9 +270,25 @@ async def delete(interaction: discord.Interaction, start_semester: int, end_seme
             await interaction.followup.send('❌ 削除をキャンセルしました。')
 
     except discord.Forbidden:
-        await interaction.followup.send('❌ ボットに必要な権限がありません。')
+        error_msg = (
+            "❌ ボットに必要な権限がありません。\n"
+            "必要な権限:\n"
+            "- チャンネルの管理\n"
+            "- ロールの管理\n"
+            "- カテゴリの管理"
+        )
+        await interaction.followup.send(error_msg)
     except Exception as e:
-        await interaction.followup.send(f'❌ エラーが発生しました: {str(e)}')
+        error_type = type(e).__name__
+        error_msg = str(e)
+        tb = traceback.format_exc()
+        error_details = (
+            f"❌ エラーが発生しました:\n"
+            f"エラーの種類: {error_type}\n"
+            f"エラーメッセージ: {error_msg}\n"
+            f"```\n{tb}\n```"
+        )
+        await interaction.followup.send(error_details)
 
 # Botのトークンを環境変数から取得して起動
 try:
@@ -263,4 +297,11 @@ try:
         raise ValueError("DISCORD_TOKEN environment variable is not set")
     bot.run(token)
 except Exception as e:
-    print(f"エラーが発生しました: {e}")
+    error_type = type(e).__name__
+    error_msg = str(e)
+    tb = traceback.format_exc()
+    print(f"エラーが発生しました:")
+    print(f"エラーの種類: {error_type}")
+    print(f"エラーメッセージ: {error_msg}")
+    print(f"トレースバック:\n{tb}")
+    sys.exit(1)
