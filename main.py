@@ -19,6 +19,7 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 # リアクションロールの設定を保存する辞書
 reaction_roles = {}
 
+#生徒用リアクションロールのメッセージを作成する関数
 # クラス選択用のリアクションロールメッセージを作成する関数
 async def create_class_selection_message(channel, semester, class_count):
     # メッセージの内容を作成
@@ -49,6 +50,7 @@ async def create_class_selection_message(channel, semester, class_count):
     
     return message
 
+#職員用リアクションロールのメッセージを作成する関数
 # リアクションロールのメッセージを作成する関数
 async def create_reaction_role_message(channel, roles, semester):
     # メッセージの内容を作成
@@ -74,7 +76,7 @@ async def create_reaction_role_message(channel, roles, semester):
     
     # リアクションロールの設定を保存
     reaction_roles[message.id] = {
-        "roles": roles,
+        "roles": [discord.utils.get(channel.guild.roles, name=role_name) for role_name in role_emojis.keys()],
         "emojis": role_emojis
     }
     
@@ -297,8 +299,14 @@ async def gen(interaction: discord.Interaction, semester: int, class_count: int)
         )
 
         # リアクションロールのメッセージを作成
-        roles_to_assign = [semester_student_role, semester_teacher_role]
-        await create_reaction_role_message(interaction.channel, roles_to_assign, semester)
+        # 職員用のロールを取得
+        teacher_roles = []
+        for i in range(1, class_count + 1):
+            teacher_role = discord.utils.get(interaction.guild.roles, name=f"{semester}-{i}職員")
+            if teacher_role:
+                teacher_roles.append(teacher_role)
+        
+        await create_reaction_role_message(interaction.channel, teacher_roles, semester)
 
         # 総合受付チャンネルを探して、クラス選択用のリアクションロールを作成
         reception_channel = next((channel for channel in interaction.guild.text_channels if "総合受付" in channel.name), None)
@@ -398,7 +406,8 @@ async def delete(interaction: discord.Interaction, start_semester: int, end_seme
                             message = await channel.fetch_message(message_id)
                             if message and (
                                 any(f"## {semester}期のロール選択" in line for line in message.content.split('\n')) or
-                                any(f"## {semester}期のクラス選択" in line for line in message.content.split('\n'))
+                                any(f"## {semester}期のクラス選択" in line for line in message.content.split('\n')) or
+                                any(f"## <@&" in line and f"{semester}期のロールを選択してください" in line for line in message.content.split('\n'))
                             ):
                                 reaction_messages_to_delete.append(message)
                                 del reaction_roles[message_id]
