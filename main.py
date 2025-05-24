@@ -290,6 +290,56 @@ async def delete(interaction: discord.Interaction, start_semester: int, end_seme
         )
         await interaction.followup.send(error_details)
 
+@bot.tree.command(name="create_first_roll", description="職員とOBのロールを作成します")
+async def create_first_roll(interaction: discord.Interaction):
+    # 権限チェック
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message('このコマンドは管理者権限が必要です。')
+        return
+
+    try:
+        # 処理開始を通知
+        await interaction.response.send_message('ロールを作成中です...')
+        
+        # 職員ロールの作成
+        teacher_role = await interaction.guild.create_role(
+            name="職員",
+            color=discord.Color.red(),
+            hoist=True  # オンラインメンバーとは別にロールメンバーを表示
+        )
+        
+        # OBロールの作成
+        ob_role = await interaction.guild.create_role(
+            name="OB",
+            color=discord.Color.blue()
+        )
+        
+        await interaction.followup.send(
+            f'✅ 以下のロールを作成しました：\n'
+            f'👥 ロール\n'
+            f'  └ 職員（赤色、オンラインメンバーとは別に表示）\n'
+            f'  └ OB（青色）'
+        )
+    
+    except discord.Forbidden:
+        error_msg = (
+            "❌ ボットに必要な権限がありません。\n"
+            "必要な権限:\n"
+            "- ロールの管理"
+        )
+        await interaction.followup.send(error_msg)
+    except Exception as e:
+        error_type = type(e).__name__
+        error_msg = str(e)
+        tb = traceback.format_exc()
+        error_details = (
+            f"❌ エラーが発生しました:\n"
+            f"エラーの種類: {error_type}\n"
+            f"エラーメッセージ: {error_msg}\n"
+            f"```\n{tb}\n```"
+        )
+        await interaction.followup.send(error_details)
+
 # Botのトークンを環境変数から取得して起動
 try:
     token = os.getenv('DISCORD_TOKEN')
