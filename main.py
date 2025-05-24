@@ -73,16 +73,34 @@ async def gen(interaction: discord.Interaction, semester: int, class_count: int)
         
         # 教員用カテゴリの作成
         teacher_category_name = f"👨‍🏫 {semester}期職員"
-        teacher_category = await interaction.guild.create_category(teacher_category_name)
+        overwrites_teacher_category = {
+            interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            semester_teacher_role: discord.PermissionOverwrite(view_channel=True)
+        }
+        teacher_category = await interaction.guild.create_category(
+            teacher_category_name,
+            overwrites=overwrites_teacher_category
+        )
         
         # 生徒用カテゴリの作成
         student_category_name = f"👨‍🎓 {semester}期生徒"
         student_category = await interaction.guild.create_category(student_category_name)
         
         # 期全体の連絡チャンネルを作成
+        overwrites_semester_channel = {
+            interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            semester_student_role: discord.PermissionOverwrite(view_channel=True, send_messages=True),
+            semester_teacher_role: discord.PermissionOverwrite(view_channel=True, send_messages=True)
+        }
+        overwrites_semester_channel = {
+            interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            semester_student_role: discord.PermissionOverwrite(view_channel=True),
+            semester_teacher_role: discord.PermissionOverwrite(view_channel=True)
+        }
         await interaction.guild.create_text_channel(
             name=f"📢｜{semester}期連絡",
-            category=student_category
+            category=student_category,
+            overwrites=overwrites_semester_channel
         )
         
         # 教員用チャンネルの作成
@@ -95,20 +113,33 @@ async def gen(interaction: discord.Interaction, semester: int, class_count: int)
         
         # 生徒用チャンネルの作成
         for i in range(1, class_count + 1):
+            # クラスの生徒ロールを取得
+            student_role = discord.utils.get(interaction.guild.roles, name=f"{semester}-{i}生徒")
+            
+            # チャンネル用のパーミッション設定（職員 + 生徒）
+            overwrites_class_channel = {
+                interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+                student_role: discord.PermissionOverwrite(view_channel=True, send_messages=True),
+                semester_teacher_role: discord.PermissionOverwrite(view_channel=True, send_messages=True)
+            }
+            
             # 雑談チャンネル
             await interaction.guild.create_text_channel(
                 name=f"💬｜{semester}-{i}雑談",
-                category=student_category
+                category=student_category,
+                overwrites=overwrites_class_channel
             )
             # 写真チャンネル
             await interaction.guild.create_text_channel(
                 name=f"📸｜{semester}-{i}写真",
-                category=student_category
+                category=student_category,
+                overwrites=overwrites_class_channel
             )
             # 連絡チャンネル
             await interaction.guild.create_text_channel(
                 name=f"📢｜{semester}-{i}連絡",
-                category=student_category
+                category=student_category,
+                overwrites=overwrites_class_channel
             )
         
         await interaction.followup.send(
