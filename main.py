@@ -19,21 +19,51 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 # リアクションロールの設定を保存する辞書
 reaction_roles = {}
 
+# クラス選択用のリアクションロールメッセージを作成する関数
+async def create_class_selection_message(channel, semester, class_count):
+    # メッセージの内容を作成
+    content = f"## {semester}期のクラス選択\n"
+    content += "以下のリアクションをクリックして、あなたのクラスを選択してください：\n\n"
+    
+    # ロールと絵文字の対応を設定
+    role_emojis = {}
+    for i in range(1, class_count + 1):
+        role_emojis[f"{semester}-{i}生徒"] = f"{i}️⃣"
+    
+    # メッセージにロールの説明を追加
+    for role_name, emoji in role_emojis.items():
+        content += f"{emoji} - {role_name}\n"
+    
+    # メッセージを送信
+    message = await channel.send(content)
+    
+    # リアクションを追加
+    for emoji in role_emojis.values():
+        await message.add_reaction(emoji)
+    
+    # リアクションロールの設定を保存
+    reaction_roles[message.id] = {
+        "roles": [discord.utils.get(channel.guild.roles, name=role_name) for role_name in role_emojis.keys()],
+        "emojis": role_emojis
+    }
+    
+    return message
+
 # リアクションロールのメッセージを作成する関数
 async def create_reaction_role_message(channel, roles, semester):
     # メッセージの内容を作成
-    content = f"## {semester}期のロール選択\n"
-    content += "以下のリアクションをクリックして、あなたのロールを選択してください：\n\n"
+    staff_role = discord.utils.get(channel.guild.roles, name="職員")
+    content = f"## {staff_role.mention} 各位。{semester}期のロールを選択してください。\n"
+    content += "以下のリアクションをクリックして、あなたの担当クラスを選択してください：\n\n"
     
     # ロールと絵文字の対応を設定
-    role_emojis = {
-        "生徒": "👨‍🎓",
-        "職員": "👨‍🏫"
-    }
+    role_emojis = {}
+    for i in range(1, len(roles) + 1):
+        role_emojis[f"{semester}-{i}職員"] = f"{i}️⃣"
     
     # メッセージにロールの説明を追加
-    for role_type, emoji in role_emojis.items():
-        content += f"{emoji} - {semester}期{role_type}\n"
+    for role_name, emoji in role_emojis.items():
+        content += f"{emoji} - {role_name}\n"
     
     # メッセージを送信
     message = await channel.send(content)
@@ -72,14 +102,20 @@ async def on_raw_reaction_add(payload):
         if role_type:
             # 対応するロールを探して付与
             for role in reaction_roles[payload.message_id]["roles"]:
-                if role_type == "生徒" and role.name.endswith("期生"):
+                if role.name == role_type:
                     await member.add_roles(role)
-                    # 管理用チャンネルを取得
-                    admin_channel = next((channel for channel in guild.text_channels if "管理bot" in channel.name), None)
-                    if admin_channel:
-                        await admin_channel.send(f"`{member.name}` に `{role.name}` ロールを付与しました。")
-                elif role_type == "職員" and role.name.endswith("期職員"):
-                    await member.add_roles(role)
+                    # クラスロールの場合、期生のロールも付与
+                    if role.name.endswith("生徒"):
+                        semester = role.name.split("-")[0]  # 期数を取得
+                        semester_role = discord.utils.get(guild.roles, name=f"{semester}期生")
+                        if semester_role:
+                            await member.add_roles(semester_role)
+                    # 職員ロールの場合、期職員のロールも付与
+                    elif role.name.endswith("職員"):
+                        semester = role.name.split("-")[0]  # 期数を取得
+                        semester_role = discord.utils.get(guild.roles, name=f"{semester}期職員")
+                        if semester_role:
+                            await member.add_roles(semester_role)
                     # 管理用チャンネルを取得
                     admin_channel = next((channel for channel in guild.text_channels if "管理bot" in channel.name), None)
                     if admin_channel:
@@ -107,14 +143,20 @@ async def on_raw_reaction_remove(payload):
         if role_type:
             # 対応するロールを探して削除
             for role in reaction_roles[payload.message_id]["roles"]:
-                if role_type == "生徒" and role.name.endswith("期生"):
+                if role.name == role_type:
                     await member.remove_roles(role)
-                    # 管理用チャンネルを取得
-                    admin_channel = next((channel for channel in guild.text_channels if "管理bot" in channel.name), None)
-                    if admin_channel:
-                        await admin_channel.send(f"`{member.name}` から `{role.name}` ロールを削除しました。")
-                elif role_type == "職員" and role.name.endswith("期職員"):
-                    await member.remove_roles(role)
+                    # クラスロールの場合、期生のロールも削除
+                    if role.name.endswith("生徒"):
+                        semester = role.name.split("-")[0]  # 期数を取得
+                        semester_role = discord.utils.get(guild.roles, name=f"{semester}期生")
+                        if semester_role:
+                            await member.remove_roles(semester_role)
+                    # 職員ロールの場合、期職員のロールも削除
+                    elif role.name.endswith("職員"):
+                        semester = role.name.split("-")[0]  # 期数を取得
+                        semester_role = discord.utils.get(guild.roles, name=f"{semester}期職員")
+                        if semester_role:
+                            await member.remove_roles(semester_role)
                     # 管理用チャンネルを取得
                     admin_channel = next((channel for channel in guild.text_channels if "管理bot" in channel.name), None)
                     if admin_channel:
@@ -193,11 +235,6 @@ async def gen(interaction: discord.Interaction, semester: int, class_count: int)
         # 期全体の連絡チャンネルを作成
         overwrites_semester_channel = {
             interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            semester_student_role: discord.PermissionOverwrite(view_channel=True, send_messages=True),
-            semester_teacher_role: discord.PermissionOverwrite(view_channel=True, send_messages=True)
-        }
-        overwrites_semester_channel = {
-            interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
             semester_student_role: discord.PermissionOverwrite(view_channel=True),
             semester_teacher_role: discord.PermissionOverwrite(view_channel=True)
         }
@@ -262,6 +299,14 @@ async def gen(interaction: discord.Interaction, semester: int, class_count: int)
         # リアクションロールのメッセージを作成
         roles_to_assign = [semester_student_role, semester_teacher_role]
         await create_reaction_role_message(interaction.channel, roles_to_assign, semester)
+
+        # 総合受付チャンネルを探して、クラス選択用のリアクションロールを作成
+        reception_channel = next((channel for channel in interaction.guild.text_channels if "総合受付" in channel.name), None)
+        if reception_channel:
+            await create_class_selection_message(reception_channel, semester, class_count)
+            await interaction.followup.send("✅ 総合受付チャンネルにクラス選択用のリアクションロールを作成しました。")
+        else:
+            await interaction.followup.send("⚠️ 総合受付チャンネルが見つかりませんでした。クラス選択用のリアクションロールは作成されませんでした。")
     
     except discord.Forbidden:
         error_msg = (
@@ -283,7 +328,6 @@ async def gen(interaction: discord.Interaction, semester: int, class_count: int)
             f"```\n{tb}\n```"
         )
         await interaction.followup.send(error_details)
-
 
 # カテゴリとチャンネルを削除するコマンド
 @bot.tree.command(name="delete", description="指定した学期の教員向けと生徒向けカテゴリとチャンネルを削除します")
@@ -352,7 +396,10 @@ async def delete(interaction: discord.Interaction, start_semester: int, end_seme
                     for channel in interaction.guild.text_channels:
                         try:
                             message = await channel.fetch_message(message_id)
-                            if message and any(f"## {semester}期のロール選択" in line for line in message.content.split('\n')):
+                            if message and (
+                                any(f"## {semester}期のロール選択" in line for line in message.content.split('\n')) or
+                                any(f"## {semester}期のクラス選択" in line for line in message.content.split('\n'))
+                            ):
                                 reaction_messages_to_delete.append(message)
                                 del reaction_roles[message_id]
                                 break
