@@ -309,7 +309,7 @@ async def gen(interaction: discord.Interaction, semester: int, class_count: int)
         await create_reaction_role_message(interaction.channel, teacher_roles, semester)
 
         # 総合受付チャンネルを探して、クラス選択用のリアクションロールを作成
-        reception_channel = next((channel for channel in interaction.guild.text_channels if "総合受付" in channel.name), None)
+        reception_channel = next((channel for channel in interaction.guild.text_channels if "総合受付" in channel.name or "受付" in channel.name), None)
         if reception_channel:
             await create_class_selection_message(reception_channel, semester, class_count)
             await interaction.followup.send("✅ 総合受付チャンネルにクラス選択用のリアクションロールを作成しました。")
@@ -398,24 +398,44 @@ async def delete(interaction: discord.Interaction, start_semester: int, end_seme
                     roles_to_delete.append((f"クラス{role_type}", role))
 
             # リアクションロールのメッセージを検索
-            for message_id in list(reaction_roles.keys()):
-                if str(semester) in str(reaction_roles[message_id]["roles"][0].name):
-                    # すべてのテキストチャンネルを検索
-                    for channel in interaction.guild.text_channels:
-                        try:
-                            message = await channel.fetch_message(message_id)
-                            if message and (
-                                any(f"## {semester}期のロール選択" in line for line in message.content.split('\n')) or
-                                any(f"## {semester}期のクラス選択" in line for line in message.content.split('\n')) or
-                                any(f"## <@&" in line and f"{semester}期のロールを選択してください" in line for line in message.content.split('\n'))
-                            ):
-                                reaction_messages_to_delete.append(message)
-                                del reaction_roles[message_id]
-                                break
-                        except discord.NotFound:
-                            continue
-                        except Exception as e:
-                            continue
+            # 検索対象のチャンネルを取得
+            reception_channel = next((channel for channel in interaction.guild.text_channels if "総合受付" in channel.name or "受付" in channel.name), None)
+            admin_channel = next((channel for channel in interaction.guild.text_channels if "管理bot" in channel.name or "管理" in channel.name), None)
+            target_channels = [ch for ch in [reception_channel, admin_channel] if ch is not None]
+
+            if not target_channels:
+                await interaction.followup.send("❌ 検索対象のチャンネルが見つかりません。")
+                return
+
+            # 各チャンネルの最新100件のメッセージを取得
+            for channel in target_channels:
+                try:
+                    messages = []
+                    async for message in channel.history(limit=100):
+                        messages.append(message)
+                    
+                    # メッセージの内容を確認
+                    for message in messages:
+                        # リアクションロールメッセージの特徴的な文字列を確認
+                        is_reaction_role = (
+                            ("ロールを選択してください" in message.content or "クラス選択" in message.content) and
+                            "リアクションをクリックして" in message.content and
+                            str(semester) in message.content
+                        )
+                        
+                        if is_reaction_role:
+                            # リアクションロールの設定を確認（設定の有無に関わらず削除対象に追加）
+                            if message.id in reaction_roles:
+                                del reaction_roles[message.id]
+                            
+                            reaction_messages_to_delete.append(message)
+                except Exception as e:
+                    await interaction.followup.send(f"チャンネル {channel.name} のメッセージ取得中にエラー: {str(e)}")
+                    continue
+
+            if not reaction_messages_to_delete:
+                await interaction.followup.send(f"⚠️ {semester}期のリアクションロールメッセージが見つかりませんでした。処理を続行します。")
+                continue
 
         if not categories_to_delete and not roles_to_delete:
             await interaction.followup.send(
@@ -433,13 +453,12 @@ async def delete(interaction: discord.Interaction, start_semester: int, end_seme
             async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
                 self.value = True
                 self.stop()
-                await interaction.response.send_message("削除を開始します...Goodbye...!")
+                await interaction.response.send_message("削除を開始します。Goodbye...!")
 
             @discord.ui.button(label="キャンセル", style=discord.ButtonStyle.secondary)
             async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
                 self.value = False
                 self.stop()
-                await interaction.response.send_message("削除をキャンセルしました。")
 
         # 確認メッセージを送信
         view = ConfirmView()
