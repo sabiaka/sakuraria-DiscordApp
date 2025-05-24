@@ -16,6 +16,110 @@ intents.members = True         # メンバー情報を取得するために必�
 intents.presences = True       # プレゼンス情報を取得するために必要
 bot = commands.Bot(command_prefix='!', intents=intents)
 
+# リアクションロールの設定を保存する辞書
+reaction_roles = {}
+
+# リアクションロールのメッセージを作成する関数
+async def create_reaction_role_message(channel, roles, semester):
+    # メッセージの内容を作成
+    content = f"## {semester}期のロール選択\n"
+    content += "以下のリアクションをクリックして、あなたのロールを選択してください：\n\n"
+    
+    # ロールと絵文字の対応を設定
+    role_emojis = {
+        "生徒": "👨‍🎓",
+        "職員": "👨‍🏫"
+    }
+    
+    # メッセージにロールの説明を追加
+    for role_type, emoji in role_emojis.items():
+        content += f"{emoji} - {semester}期{role_type}\n"
+    
+    # メッセージを送信
+    message = await channel.send(content)
+    
+    # リアクションを追加
+    for emoji in role_emojis.values():
+        await message.add_reaction(emoji)
+    
+    # リアクションロールの設定を保存
+    reaction_roles[message.id] = {
+        "roles": roles,
+        "emojis": role_emojis
+    }
+    
+    return message
+
+# リアクションの追加イベント
+@bot.event
+async def on_raw_reaction_add(payload):
+    if payload.user_id == bot.user.id:
+        return
+    
+    # メッセージIDがリアクションロールの設定に含まれているか確認
+    if payload.message_id in reaction_roles:
+        guild = bot.get_guild(payload.guild_id)
+        member = guild.get_member(payload.user_id)
+        emoji = str(payload.emoji)
+        
+        # 絵文字に対応するロールを取得
+        role_type = None
+        for role_type_name, role_emoji in reaction_roles[payload.message_id]["emojis"].items():
+            if emoji == role_emoji:
+                role_type = role_type_name
+                break
+        
+        if role_type:
+            # 対応するロールを探して付与
+            for role in reaction_roles[payload.message_id]["roles"]:
+                if role_type == "生徒" and role.name.endswith("期生"):
+                    await member.add_roles(role)
+                    # 管理用チャンネルを取得
+                    admin_channel = next((channel for channel in guild.text_channels if "管理bot" in channel.name), None)
+                    if admin_channel:
+                        await admin_channel.send(f"`{member.name}` に `{role.name}` ロールを付与しました。")
+                elif role_type == "職員" and role.name.endswith("期職員"):
+                    await member.add_roles(role)
+                    # 管理用チャンネルを取得
+                    admin_channel = next((channel for channel in guild.text_channels if "管理bot" in channel.name), None)
+                    if admin_channel:
+                        await admin_channel.send(f"`{member.name}` に `{role.name}` ロールを付与しました。")
+
+# リアクションの削除イベント
+@bot.event
+async def on_raw_reaction_remove(payload):
+    if payload.user_id == bot.user.id:
+        return
+    
+    # メッセージIDがリアクションロールの設定に含まれているか確認
+    if payload.message_id in reaction_roles:
+        guild = bot.get_guild(payload.guild_id)
+        member = guild.get_member(payload.user_id)
+        emoji = str(payload.emoji)
+        
+        # 絵文字に対応するロールを取得
+        role_type = None
+        for role_type_name, role_emoji in reaction_roles[payload.message_id]["emojis"].items():
+            if emoji == role_emoji:
+                role_type = role_type_name
+                break
+        
+        if role_type:
+            # 対応するロールを探して削除
+            for role in reaction_roles[payload.message_id]["roles"]:
+                if role_type == "生徒" and role.name.endswith("期生"):
+                    await member.remove_roles(role)
+                    # 管理用チャンネルを取得
+                    admin_channel = next((channel for channel in guild.text_channels if "管理bot" in channel.name), None)
+                    if admin_channel:
+                        await admin_channel.send(f"`{member.name}` から `{role.name}` ロールを削除しました。")
+                elif role_type == "職員" and role.name.endswith("期職員"):
+                    await member.remove_roles(role)
+                    # 管理用チャンネルを取得
+                    admin_channel = next((channel for channel in guild.text_channels if "管理bot" in channel.name), None)
+                    if admin_channel:
+                        await admin_channel.send(f"`{member.name}` から `{role.name}` ロールを削除しました。")
+
 # Botが起動したときの処理
 @bot.event
 async def on_ready():
@@ -154,6 +258,10 @@ async def gen(interaction: discord.Interaction, semester: int, class_count: int)
             f'  └ {semester}期職員\n'
             f'  └ {class_count}クラス × 2ロール（生徒・職員）'
         )
+
+        # リアクションロールのメッセージを作成
+        roles_to_assign = [semester_student_role, semester_teacher_role]
+        await create_reaction_role_message(interaction.channel, roles_to_assign, semester)
     
     except discord.Forbidden:
         error_msg = (
@@ -190,6 +298,9 @@ async def delete(interaction: discord.Interaction, start_semester: int, end_seme
         return
 
     try:
+        # 即時応答を送信
+        await interaction.response.send_message('削除対象の検索を開始します...')
+        
         # 終了学期が指定されていない場合は開始学期のみを対象とする
         if end_semester is None:
             end_semester = start_semester
@@ -201,6 +312,7 @@ async def delete(interaction: discord.Interaction, start_semester: int, end_seme
         # 削除対象のカテゴリとロールを検索
         categories_to_delete = []
         roles_to_delete = []
+        reaction_messages_to_delete = []
         
         for semester in range(start_semester, end_semester + 1):
             # 教員用カテゴリの検索（結合された絵文字と分解された絵文字の両方に対応）
@@ -233,8 +345,24 @@ async def delete(interaction: discord.Interaction, start_semester: int, end_seme
                     role_type = "生徒" if role.name.endswith("生徒") else "職員"
                     roles_to_delete.append((f"クラス{role_type}", role))
 
+            # リアクションロールのメッセージを検索
+            for message_id in list(reaction_roles.keys()):
+                if str(semester) in str(reaction_roles[message_id]["roles"][0].name):
+                    # すべてのテキストチャンネルを検索
+                    for channel in interaction.guild.text_channels:
+                        try:
+                            message = await channel.fetch_message(message_id)
+                            if message and any(f"## {semester}期のロール選択" in line for line in message.content.split('\n')):
+                                reaction_messages_to_delete.append(message)
+                                del reaction_roles[message_id]
+                                break
+                        except discord.NotFound:
+                            continue
+                        except Exception as e:
+                            continue
+
         if not categories_to_delete and not roles_to_delete:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f'❌ {start_semester}期から{end_semester}期のカテゴリとロールが見つかりません。'
             )
             return
@@ -249,7 +377,7 @@ async def delete(interaction: discord.Interaction, start_semester: int, end_seme
             async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
                 self.value = True
                 self.stop()
-                await interaction.response.send_message("削除を開始します...")
+                await interaction.response.send_message("削除を開始します...Goodbye...!")
 
             @discord.ui.button(label="キャンセル", style=discord.ButtonStyle.secondary)
             async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -261,12 +389,14 @@ async def delete(interaction: discord.Interaction, start_semester: int, end_seme
         view = ConfirmView()
         category_list = "\n".join([f"- {type_}用カテゴリ「{category.name}」" for type_, category in categories_to_delete])
         role_list = "\n".join([f"- {type_}ロール「{role.name}」" for type_, role in roles_to_delete])
+        message_list = "\n".join([f"- リアクションロールメッセージ（{len(reaction_messages_to_delete)}件）"] if reaction_messages_to_delete else [])
         
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"⚠️ 本当に削除しますか？\n"
             f"以下のカテゴリとその中のすべてのチャンネル、およびロールが削除されます：\n"
             f"{category_list}\n"
             f"{role_list}\n"
+            f"{message_list}\n"
             f"この操作は取り消せません。",
             view=view
         )
@@ -275,6 +405,13 @@ async def delete(interaction: discord.Interaction, start_semester: int, end_seme
         await view.wait()
 
         if view.value:
+            # リアクションロールのメッセージを削除
+            for message in reaction_messages_to_delete:
+                try:
+                    await message.delete()
+                except Exception:
+                    pass
+
             # カテゴリを削除
             deleted_categories = []
             for type_, category in categories_to_delete:
@@ -295,7 +432,8 @@ async def delete(interaction: discord.Interaction, start_semester: int, end_seme
             await interaction.followup.send(
                 f'✅ 以下のカテゴリ、チャンネル、ロールを削除しました：\n'
                 f'{chr(10).join(deleted_categories)}\n'
-                f'{chr(10).join(deleted_roles)}'
+                f'{chr(10).join(deleted_roles)}\n'
+                f'リアクションロールメッセージ {len(reaction_messages_to_delete)}件'
             )
         else:
             await interaction.followup.send('❌ 削除をキャンセルしました。')
