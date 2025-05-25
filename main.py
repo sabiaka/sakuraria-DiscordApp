@@ -191,7 +191,312 @@ async def on_ready():
 async def hello(ctx):
     await ctx.send('こんにちは！')
 
-# カテゴリとチャンネルを作成するコマンド
+# ロールを作成する関数
+async def create_roles_function(interaction: discord.Interaction, semester: int, class_count: int):
+    # 既存の期のロールをチェック
+    semester_student_role = discord.utils.get(interaction.guild.roles, name=f"{semester}期生")
+    semester_teacher_role = discord.utils.get(interaction.guild.roles, name=f"{semester}期職員")
+    
+    if semester_student_role or semester_teacher_role:
+        await interaction.followup.send(f'❌ {semester}期のロールは既に存在します。')
+        return False
+
+    # 期全体のロールを作成
+    semester_student_role = await interaction.guild.create_role(
+        name=f"{semester}期生",
+        color=discord.Color.blue(),
+    )
+    semester_teacher_role = await interaction.guild.create_role(
+        name=f"{semester}期職員",
+        color=discord.Color.green()
+    )
+    
+    # クラスごとのロールを作成
+    class_roles = []
+    for i in range(1, class_count + 1):
+        student_role = await interaction.guild.create_role(
+            name=f"{semester}-{i}生徒",
+            color=discord.Color.blue(),
+            hoist=True
+        )
+        teacher_role = await interaction.guild.create_role(
+            name=f"{semester}-{i}職員",
+            color=discord.Color.green()
+        )
+        class_roles.extend([student_role, teacher_role])
+    
+    await interaction.followup.send(
+        f'✅ 以下のロールを作成しました：\n'
+        f'👥 ロール\n'
+        f'  └ {semester}期生\n'
+        f'  └ {semester}期職員\n'
+        f'  └ {class_count}クラス × 2ロール（生徒・職員）'
+    )
+    return True
+
+# カテゴリを作成する関数
+async def create_categories_function(interaction: discord.Interaction, semester: int):
+    # 既存の期のカテゴリをチェック
+    teacher_category = discord.utils.get(interaction.guild.categories, name=f"👨‍🏫 {semester}期職員")
+    if not teacher_category:
+        teacher_category = discord.utils.get(interaction.guild.categories, name=f"👨🏫 {semester}期職員")
+    
+    student_category = discord.utils.get(interaction.guild.categories, name=f"👨‍🎓 {semester}期生徒")
+    if not student_category:
+        student_category = discord.utils.get(interaction.guild.categories, name=f"👨🎓 {semester}期生徒")
+    
+    if teacher_category or student_category:
+        await interaction.followup.send(f'❌ {semester}期のカテゴリは既に存在します。')
+        return False
+
+    # 期職員のロールを取得
+    semester_teacher_role = discord.utils.get(interaction.guild.roles, name=f"{semester}期職員")
+    if not semester_teacher_role:
+        await interaction.followup.send(f'❌ {semester}期職員のロールが見つかりません。先にロールを作成してください。')
+        return False
+
+    # 教員用カテゴリの作成
+    teacher_category_name = f"👨‍🏫 {semester}期職員"
+    overwrites_teacher_category = {
+        interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+        semester_teacher_role: discord.PermissionOverwrite(view_channel=True)
+    }
+    teacher_category = await interaction.guild.create_category(
+        teacher_category_name,
+        overwrites=overwrites_teacher_category
+    )
+    
+    # 生徒用カテゴリの作成
+    student_category_name = f"👨‍🎓 {semester}期生徒"
+    student_category = await interaction.guild.create_category(student_category_name)
+    
+    await interaction.followup.send(
+        f'✅ 以下のカテゴリを作成しました：\n'
+        f'📁 {teacher_category_name}\n'
+        f'📁 {student_category_name}'
+    )
+    return True
+
+# チャンネルを作成する関数
+async def create_channels_function(interaction: discord.Interaction, semester: int, class_count: int):
+    # カテゴリの存在確認
+    teacher_category = discord.utils.get(interaction.guild.categories, name=f"👨‍🏫 {semester}期職員")
+    if not teacher_category:
+        teacher_category = discord.utils.get(interaction.guild.categories, name=f"👨🏫 {semester}期職員")
+    
+    student_category = discord.utils.get(interaction.guild.categories, name=f"👨‍🎓 {semester}期生徒")
+    if not student_category:
+        student_category = discord.utils.get(interaction.guild.categories, name=f"👨🎓 {semester}期生徒")
+    
+    if not teacher_category or not student_category:
+        await interaction.followup.send(f'❌ {semester}期のカテゴリが見つかりません。先にカテゴリを作成してください。')
+        return False
+
+    # ロールの存在確認
+    semester_student_role = discord.utils.get(interaction.guild.roles, name=f"{semester}期生")
+    semester_teacher_role = discord.utils.get(interaction.guild.roles, name=f"{semester}期職員")
+    
+    if not semester_student_role or not semester_teacher_role:
+        await interaction.followup.send(f'❌ {semester}期のロールが見つかりません。先にロールを作成してください。')
+        return False
+
+    # 期全体の連絡チャンネルを作成
+    overwrites_semester_channel = {
+        interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+        semester_student_role: discord.PermissionOverwrite(view_channel=True),
+        semester_teacher_role: discord.PermissionOverwrite(view_channel=True)
+    }
+    await interaction.guild.create_text_channel(
+        name=f"📢｜{semester}期連絡",
+        category=student_category,
+        overwrites=overwrites_semester_channel
+    )
+    
+    # 教員用チャンネルの作成
+    for i in range(1, class_count + 1):
+        channel_name = f"📝｜{semester}-{i}教員"
+        await interaction.guild.create_text_channel(
+            name=channel_name,
+            category=teacher_category
+        )
+    
+    # 生徒用チャンネルの作成
+    for i in range(1, class_count + 1):
+        # クラスの生徒ロールを取得
+        student_role = discord.utils.get(interaction.guild.roles, name=f"{semester}-{i}生徒")
+        
+        # チャンネル用のパーミッション設定
+        overwrites_class_channel = {
+            interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            student_role: discord.PermissionOverwrite(view_channel=True, send_messages=True),
+            semester_teacher_role: discord.PermissionOverwrite(view_channel=True, send_messages=True)
+        }
+        
+        # 雑談チャンネル
+        await interaction.guild.create_text_channel(
+            name=f"💬｜{semester}-{i}雑談",
+            category=student_category,
+            overwrites=overwrites_class_channel
+        )
+        # 写真チャンネル
+        await interaction.guild.create_text_channel(
+            name=f"📸｜{semester}-{i}写真",
+            category=student_category,
+            overwrites=overwrites_class_channel
+        )
+        # 連絡チャンネル
+        await interaction.guild.create_text_channel(
+            name=f"📢｜{semester}-{i}連絡",
+            category=student_category,
+            overwrites=overwrites_class_channel
+        )
+    
+    await interaction.followup.send(
+        f'✅ 以下のチャンネルを作成しました：\n'
+        f'📁 {teacher_category.name}\n'
+        f'  └ {class_count}個の教員用チャンネル\n'
+        f'📁 {student_category.name}\n'
+        f'  └ 期全体連絡チャンネル\n'
+        f'  └ {class_count}クラス × 3チャンネル（雑談・写真・連絡）'
+    )
+    return True
+
+# リアクションロールを作成する関数
+async def create_reaction_roles_function(interaction: discord.Interaction, semester: int, class_count: int):
+    # ロールの存在確認
+    semester_student_role = discord.utils.get(interaction.guild.roles, name=f"{semester}期生")
+    semester_teacher_role = discord.utils.get(interaction.guild.roles, name=f"{semester}期職員")
+    
+    if not semester_student_role or not semester_teacher_role:
+        await interaction.followup.send(f'❌ {semester}期のロールが見つかりません。先にロールを作成してください。')
+        return False
+
+    # 職員用のロールを取得
+    teacher_roles = []
+    for i in range(1, class_count + 1):
+        teacher_role = discord.utils.get(interaction.guild.roles, name=f"{semester}-{i}職員")
+        if teacher_role:
+            teacher_roles.append(teacher_role)
+    
+    await create_reaction_role_message(interaction.channel, teacher_roles, semester)
+
+    # 総合受付チャンネルを探して、クラス選択用のリアクションロールを作成
+    reception_channel = next((channel for channel in interaction.guild.text_channels if "総合受付" in channel.name or "受付" in channel.name), None)
+    if reception_channel:
+        await create_class_selection_message(reception_channel, semester, class_count)
+        await interaction.followup.send("✅ 総合受付チャンネルにクラス選択用のリアクションロールを作成しました。")
+    else:
+        await interaction.followup.send("⚠️ 総合受付チャンネルが見つかりませんでした。クラス選択用のリアクションロールは作成されませんでした。")
+    return True
+
+# コマンドハンドラー
+@bot.tree.command(name="create_roles", description="指定した学期のロールを作成します")
+@app_commands.describe(
+    semester="学期（数字）",
+    class_count="クラス数"
+)
+async def create_roles(interaction: discord.Interaction, semester: int, class_count: int):
+    # 権限チェック
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message('このコマンドは管理者権限が必要です。')
+        return
+
+    try:
+        # 処理開始を通知
+        await interaction.response.send_message('ロールを作成中です...')
+        await create_roles_function(interaction, semester, class_count)
+    except Exception as e:
+        error_type = type(e).__name__
+        error_msg = str(e)
+        tb = traceback.format_exc()
+        error_details = (
+            f"❌ エラーが発生しました:\n"
+            f"エラーの種類: {error_type}\n"
+            f"エラーメッセージ: {error_msg}\n"
+            f"```\n{tb}\n```"
+        )
+        await interaction.followup.send(error_details)
+
+@bot.tree.command(name="create_categories", description="指定した学期のカテゴリを作成します")
+@app_commands.describe(
+    semester="学期（数字）"
+)
+async def create_categories(interaction: discord.Interaction, semester: int):
+    # 権限チェック
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message('このコマンドは管理者権限が必要です。')
+        return
+
+    try:
+        # 処理開始を通知
+        await interaction.response.send_message('カテゴリを作成中です...')
+        await create_categories_function(interaction, semester)
+    except Exception as e:
+        error_type = type(e).__name__
+        error_msg = str(e)
+        tb = traceback.format_exc()
+        error_details = (
+            f"❌ エラーが発生しました:\n"
+            f"エラーの種類: {error_type}\n"
+            f"エラーメッセージ: {error_msg}\n"
+            f"```\n{tb}\n```"
+        )
+        await interaction.followup.send(error_details)
+
+@bot.tree.command(name="create_channels", description="指定した学期のチャンネルを作成します")
+@app_commands.describe(
+    semester="学期（数字）",
+    class_count="クラス数"
+)
+async def create_channels(interaction: discord.Interaction, semester: int, class_count: int):
+    # 権限チェック
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message('このコマンドは管理者権限が必要です。')
+        return
+
+    try:
+        # 処理開始を通知
+        await interaction.response.send_message('チャンネルを作成中です...')
+        await create_channels_function(interaction, semester, class_count)
+    except Exception as e:
+        error_type = type(e).__name__
+        error_msg = str(e)
+        tb = traceback.format_exc()
+        error_details = (
+            f"❌ エラーが発生しました:\n"
+            f"エラーの種類: {error_type}\n"
+            f"エラーメッセージ: {error_msg}\n"
+            f"```\n{tb}\n```"
+        )
+        await interaction.followup.send(error_details)
+
+@bot.tree.command(name="create_reaction_roles", description="指定した学期のリアクションロールメッセージを作成します")
+@app_commands.describe(
+    semester="学期（数字）",
+    class_count="クラス数"
+)
+async def create_reaction_roles(interaction: discord.Interaction, semester: int, class_count: int):
+    # 権限チェック
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message('このコマンドは管理者権限が必要です。')
+        return
+
+    try:
+        # 処理開始を通知
+        await interaction.response.send_message('リアクションロールメッセージを作成中です...')
+        await create_reaction_roles_function(interaction, semester, class_count)
+    except Exception as e:
+        error_type = type(e).__name__
+        error_msg = str(e)
+        tb = traceback.format_exc()
+        error_details = (
+            f"❌ エラーが発生しました:\n"
+            f"エラーの種類: {error_type}\n"
+            f"エラーメッセージ: {error_msg}\n"
+            f"```\n{tb}\n```"
+        )
+        await interaction.followup.send(error_details)
+
 @bot.tree.command(name="new_season", description="教員向けと生徒向けのカテゴリとチャンネルを作成します")
 @app_commands.describe(
     semester="学期（数字）",
@@ -204,7 +509,7 @@ async def new_season(interaction: discord.Interaction, semester: int, class_coun
         return
 
     try:
-        # 既存の期のカテゴリをチェック（絵文字のバリエーションに対応）
+        # 既存の期のカテゴリをチェック
         teacher_category = discord.utils.get(interaction.guild.categories, name=f"👨‍🏫 {semester}期職員")
         if not teacher_category:
             teacher_category = discord.utils.get(interaction.guild.categories, name=f"👨🏫 {semester}期職員")
@@ -228,136 +533,18 @@ async def new_season(interaction: discord.Interaction, semester: int, class_coun
         # 処理開始を通知
         await interaction.response.send_message('チャンネルとロールを作成中です...')
         
-        # 期全体のロールを作成
-        semester_student_role = await interaction.guild.create_role(
-            name=f"{semester}期生",
-            color=discord.Color.blue(),
-        )
-        semester_teacher_role = await interaction.guild.create_role(
-            name=f"{semester}期職員",
-            color=discord.Color.green()
-        )
+        # 各機能を順番に実行
+        if not await create_roles_function(interaction, semester, class_count):
+            return
+        if not await create_categories_function(interaction, semester):
+            return
+        if not await create_channels_function(interaction, semester, class_count):
+            return
+        if not await create_reaction_roles_function(interaction, semester, class_count):
+            return
         
-        # クラスごとのロールを作成
-        class_roles = []
-        for i in range(1, class_count + 1):
-            student_role = await interaction.guild.create_role(
-                name=f"{semester}-{i}生徒",
-                color=discord.Color.blue(),
-                hoist=True  # オンラインメンバーとは別にロールメンバーを表示
-            )
-            teacher_role = await interaction.guild.create_role(
-                name=f"{semester}-{i}職員",
-                color=discord.Color.green()
-            )
-            class_roles.extend([student_role, teacher_role])
-        
-        # 教員用カテゴリの作成（絵文字のバリエーションに対応）
-        teacher_category_name = f"👨‍🏫 {semester}期職員"
-        overwrites_teacher_category = {
-            interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            semester_teacher_role: discord.PermissionOverwrite(view_channel=True)
-        }
-        teacher_category = await interaction.guild.create_category(
-            teacher_category_name,
-            overwrites=overwrites_teacher_category
-        )
-        
-        # 生徒用カテゴリの作成（絵文字のバリエーションに対応）
-        student_category_name = f"👨‍🎓 {semester}期生徒"
-        student_category = await interaction.guild.create_category(student_category_name)
-        
-        # 期全体の連絡チャンネルを作成
-        overwrites_semester_channel = {
-            interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            semester_student_role: discord.PermissionOverwrite(view_channel=True),
-            semester_teacher_role: discord.PermissionOverwrite(view_channel=True)
-        }
-        await interaction.guild.create_text_channel(
-            name=f"📢｜{semester}期連絡",
-            category=student_category,
-            overwrites=overwrites_semester_channel
-        )
-        
-        # 教員用チャンネルの作成
-        for i in range(1, class_count + 1):
-            channel_name = f"📝｜{semester}-{i}教員"
-            await interaction.guild.create_text_channel(
-                name=channel_name,
-                category=teacher_category
-            )
-        
-        # 生徒用チャンネルの作成
-        for i in range(1, class_count + 1):
-            # クラスの生徒ロールを取得
-            student_role = discord.utils.get(interaction.guild.roles, name=f"{semester}-{i}生徒")
-            
-            # チャンネル用のパーミッション設定（職員 + 生徒）
-            overwrites_class_channel = {
-                interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-                student_role: discord.PermissionOverwrite(view_channel=True, send_messages=True),
-                semester_teacher_role: discord.PermissionOverwrite(view_channel=True, send_messages=True)
-            }
-            
-            # 雑談チャンネル
-            await interaction.guild.create_text_channel(
-                name=f"💬｜{semester}-{i}雑談",
-                category=student_category,
-                overwrites=overwrites_class_channel
-            )
-            # 写真チャンネル
-            await interaction.guild.create_text_channel(
-                name=f"📸｜{semester}-{i}写真",
-                category=student_category,
-                overwrites=overwrites_class_channel
-            )
-            # 連絡チャンネル
-            await interaction.guild.create_text_channel(
-                name=f"📢｜{semester}-{i}連絡",
-                category=student_category,
-                overwrites=overwrites_class_channel
-            )
-        
-        await interaction.followup.send(
-            f'✅ 以下のカテゴリ、チャンネル、ロールを作成しました：\n'
-            f'📁 {teacher_category_name}\n'
-            f'  └ {class_count}個の教員用チャンネル\n'
-            f'📁 {student_category_name}\n'
-            f'  └ 期全体連絡チャンネル\n'
-            f'  └ {class_count}クラス × 3チャンネル（雑談・写真・連絡）\n'
-            f'👥 ロール\n'
-            f'  └ {semester}期生\n'
-            f'  └ {semester}期職員\n'
-            f'  └ {class_count}クラス × 2ロール（生徒・職員）'
-        )
+        await interaction.followup.send('✅ すべての処理が完了しました。')
 
-        # リアクションロールのメッセージを作成
-        # 職員用のロールを取得
-        teacher_roles = []
-        for i in range(1, class_count + 1):
-            teacher_role = discord.utils.get(interaction.guild.roles, name=f"{semester}-{i}職員")
-            if teacher_role:
-                teacher_roles.append(teacher_role)
-        
-        await create_reaction_role_message(interaction.channel, teacher_roles, semester)
-
-        # 総合受付チャンネルを探して、クラス選択用のリアクションロールを作成
-        reception_channel = next((channel for channel in interaction.guild.text_channels if "総合受付" in channel.name or "受付" in channel.name), None)
-        if reception_channel:
-            await create_class_selection_message(reception_channel, semester, class_count)
-            await interaction.followup.send("✅ 総合受付チャンネルにクラス選択用のリアクションロールを作成しました。")
-        else:
-            await interaction.followup.send("⚠️ 総合受付チャンネルが見つかりませんでした。クラス選択用のリアクションロールは作成されませんでした。")
-    
-    except discord.Forbidden:
-        error_msg = (
-            "❌ ボットに必要な権限がありません。\n"
-            "必要な権限:\n"
-            "- チャンネルの管理\n"
-            "- ロールの管理\n"
-            "- カテゴリの管理"
-        )
-        await interaction.followup.send(error_msg)
     except Exception as e:
         error_type = type(e).__name__
         error_msg = str(e)
