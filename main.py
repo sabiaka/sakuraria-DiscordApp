@@ -5,6 +5,7 @@ import os
 from dotenv import load_dotenv
 import traceback
 import sys
+import json
 
 # 環境変数の読み込み
 load_dotenv(dotenv_path='.env')  # 明示的に.envファイルを指定
@@ -18,6 +19,47 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 # リアクションロールの設定を保存する辞書
 reaction_roles = {}
+
+# リアクションロールの設定をJSONファイルに保存する関数
+def save_reaction_roles():
+    # ロールIDを文字列に変換して保存
+    serializable_roles = {}
+    for message_id, data in reaction_roles.items():
+        serializable_roles[str(message_id)] = {
+            "roles": [role.id for role in data["roles"]],
+            "emojis": data["emojis"]
+        }
+    
+    with open('reaction_roles.json', 'w', encoding='utf-8') as f:
+        json.dump(serializable_roles, f, ensure_ascii=False, indent=4)
+
+# リアクションロールの設定をJSONファイルから読み込む関数
+async def load_reaction_roles():
+    if not os.path.exists('reaction_roles.json'):
+        print("リアクションロールの設定ファイルが見つかりません。")
+        return
+    
+    with open('reaction_roles.json', 'r', encoding='utf-8') as f:
+        serializable_roles = json.load(f)
+    
+    loaded_count = 0
+    for message_id, data in serializable_roles.items():
+        # ロールIDからロールオブジェクトを取得
+        roles = []
+        for guild in bot.guilds:
+            for role_id in data["roles"]:
+                role = guild.get_role(role_id)
+                if role:
+                    roles.append(role)
+        
+        if roles:  # 有効なロールが見つかった場合のみ追加
+            reaction_roles[int(message_id)] = {
+                "roles": roles,
+                "emojis": data["emojis"]
+            }
+            loaded_count += 1
+    
+    print(f"リアクションロールの設定を読み込みました: {loaded_count}件")
 
 #生徒用リアクションロールのメッセージを作成する関数
 # クラス選択用のリアクションロールメッセージを作成する関数
@@ -47,6 +89,9 @@ async def create_class_selection_message(channel, semester, class_count):
         "roles": [discord.utils.get(channel.guild.roles, name=role_name) for role_name in role_emojis.keys()],
         "emojis": role_emojis
     }
+    
+    # 設定をJSONファイルに保存
+    save_reaction_roles()
     
     return message
 
@@ -79,6 +124,9 @@ async def create_reaction_role_message(channel, roles, semester):
         "roles": [discord.utils.get(channel.guild.roles, name=role_name) for role_name in role_emojis.keys()],
         "emojis": role_emojis
     }
+    
+    # 設定をJSONファイルに保存
+    save_reaction_roles()
     
     return message
 
@@ -181,6 +229,10 @@ async def on_raw_reaction_remove(payload):
 async def on_ready():
     print(f'{bot.user} としてログインしました')
     try:
+        # リアクションロールの設定を読み込む
+        await load_reaction_roles()
+        # print("リアクションロールの設定を読み込みました")
+        
         synced = await bot.tree.sync()
         print(f"スラッシュコマンドを同期しました: {len(synced)}個")
     except Exception as e:
@@ -734,6 +786,9 @@ async def delete_season(interaction: discord.Interaction, start_semester: int, e
             for type_, role in roles_to_delete:
                 await role.delete()
                 deleted_roles.append(f"{type_}ロール「{role.name}」")
+            
+            # リアクションロールの設定をJSONファイルに保存
+            save_reaction_roles()
             
             await interaction.followup.send(
                 f'✅ 以下のカテゴリ、チャンネル、ロールを削除しました：\n'
