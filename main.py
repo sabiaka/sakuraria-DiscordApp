@@ -567,6 +567,20 @@ async def new_season(interaction: discord.Interaction, semester: int, class_coun
         return
 
     try:
+        # 古いチャンネル（📙になっていないチャンネル）をチェック
+        old_channels = []
+        for channel in interaction.guild.text_channels:
+            if channel.name.startswith("📗") and any(str(i) in channel.name for i in range(1, semester)):
+                old_channels.append(channel.name)
+        
+        if old_channels:
+            old_channels_list = "\n".join([f"- {name}" for name in old_channels])
+            await interaction.response.send_message(
+                f"❌ 古いチャンネルが存在します。先に `/next_season` コマンドを実行して、以下のチャンネルを更新してください：\n"
+                f"{old_channels_list}"
+            )
+            return
+
         # 既存の期のカテゴリをチェック
         teacher_category = discord.utils.get(interaction.guild.categories, name=f"👨‍🏫 {semester}期職員")
         if not teacher_category:
