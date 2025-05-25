@@ -454,9 +454,19 @@ async def create_reaction_roles_function(interaction: discord.Interaction, semes
     class_count="クラス数"
 )
 async def create_roles(interaction: discord.Interaction, semester: int, class_count: int):
+    # チャンネルとロールのチェック
+    if "管理bot" not in interaction.channel.name:
+        await interaction.response.send_message('このコマンドは「管理bot」チャンネルでのみ使用できます。', ephemeral=True)
+        return
+    
+    staff_role = discord.utils.get(interaction.guild.roles, name="職員")
+    if not staff_role or staff_role not in interaction.user.roles:
+        await interaction.response.send_message('このコマンドは「職員」ロールを持つユーザーのみが使用できます。', ephemeral=True)
+        return
+
     # 権限チェック
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message('このコマンドは管理者権限が必要です。')
+        await interaction.response.send_message('このコマンドは管理者権限が必要です。', ephemeral=True)
         return
 
     try:
@@ -480,9 +490,19 @@ async def create_roles(interaction: discord.Interaction, semester: int, class_co
     semester="学期（数字）"
 )
 async def create_categories(interaction: discord.Interaction, semester: int):
+    # チャンネルとロールのチェック
+    if "管理bot" not in interaction.channel.name:
+        await interaction.response.send_message('このコマンドは「管理bot」チャンネルでのみ使用できます。', ephemeral=True)
+        return
+    
+    staff_role = discord.utils.get(interaction.guild.roles, name="職員")
+    if not staff_role or staff_role not in interaction.user.roles:
+        await interaction.response.send_message('このコマンドは「職員」ロールを持つユーザーのみが使用できます。', ephemeral=True)
+        return
+
     # 権限チェック
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message('このコマンドは管理者権限が必要です。')
+        await interaction.response.send_message('このコマンドは管理者権限が必要です。', ephemeral=True)
         return
 
     try:
@@ -507,9 +527,19 @@ async def create_categories(interaction: discord.Interaction, semester: int):
     class_count="クラス数"
 )
 async def create_channels(interaction: discord.Interaction, semester: int, class_count: int):
+    # チャンネルとロールのチェック
+    if "管理bot" not in interaction.channel.name:
+        await interaction.response.send_message('このコマンドは「管理bot」チャンネルでのみ使用できます。', ephemeral=True)
+        return
+    
+    staff_role = discord.utils.get(interaction.guild.roles, name="職員")
+    if not staff_role or staff_role not in interaction.user.roles:
+        await interaction.response.send_message('このコマンドは「職員」ロールを持つユーザーのみが使用できます。', ephemeral=True)
+        return
+
     # 権限チェック
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message('このコマンドは管理者権限が必要です。')
+        await interaction.response.send_message('このコマンドは管理者権限が必要です。', ephemeral=True)
         return
 
     try:
@@ -534,9 +564,19 @@ async def create_channels(interaction: discord.Interaction, semester: int, class
     class_count="クラス数"
 )
 async def create_reaction_roles(interaction: discord.Interaction, semester: int, class_count: int):
+    # チャンネルとロールのチェック
+    if "管理bot" not in interaction.channel.name:
+        await interaction.response.send_message('このコマンドは「管理bot」チャンネルでのみ使用できます。', ephemeral=True)
+        return
+    
+    staff_role = discord.utils.get(interaction.guild.roles, name="職員")
+    if not staff_role or staff_role not in interaction.user.roles:
+        await interaction.response.send_message('このコマンドは「職員」ロールを持つユーザーのみが使用できます。', ephemeral=True)
+        return
+
     # 権限チェック
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message('このコマンドは管理者権限が必要です。')
+        await interaction.response.send_message('このコマンドは管理者権限が必要です。', ephemeral=True)
         return
 
     try:
@@ -561,9 +601,19 @@ async def create_reaction_roles(interaction: discord.Interaction, semester: int,
     class_count="クラス数"
 )
 async def new_season(interaction: discord.Interaction, semester: int, class_count: int):
+    # チャンネルとロールのチェック
+    if "管理bot" not in interaction.channel.name:
+        await interaction.response.send_message('このコマンドは「管理bot」チャンネルでのみ使用できます。', ephemeral=True)
+        return
+    
+    staff_role = discord.utils.get(interaction.guild.roles, name="職員")
+    if not staff_role or staff_role not in interaction.user.roles:
+        await interaction.response.send_message('このコマンドは「職員」ロールを持つユーザーのみが使用できます。', ephemeral=True)
+        return
+
     # 権限チェック
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message('このコマンドは管理者権限が必要です。')
+        await interaction.response.send_message('このコマンドは管理者権限が必要です。', ephemeral=True)
         return
 
     try:
@@ -636,9 +686,19 @@ async def new_season(interaction: discord.Interaction, semester: int, class_coun
     end_semester="削除終了学期（数字、省略可）"
 )
 async def delete_season(interaction: discord.Interaction, start_semester: int, end_semester: int = None):
+    # チャンネルとロールのチェック
+    if "管理bot" not in interaction.channel.name:
+        await interaction.response.send_message('このコマンドは「管理bot」チャンネルでのみ使用できます。', ephemeral=True)
+        return
+    
+    staff_role = discord.utils.get(interaction.guild.roles, name="職員")
+    if not staff_role or staff_role not in interaction.user.roles:
+        await interaction.response.send_message('このコマンドは「職員」ロールを持つユーザーのみが使用できます。', ephemeral=True)
+        return
+
     # 権限チェック
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message('このコマンドは管理者権限が必要です。')
+        await interaction.response.send_message('このコマンドは管理者権限が必要です。', ephemeral=True)
         return
 
     try:
@@ -836,9 +896,19 @@ async def delete_season(interaction: discord.Interaction, start_semester: int, e
 
 @bot.tree.command(name="create_first_roll", description="職員とOBのロールを作成します")
 async def create_first_roll(interaction: discord.Interaction):
+    # チャンネルとロールのチェック
+    if "管理bot" not in interaction.channel.name:
+        await interaction.response.send_message('このコマンドは「管理bot」チャンネルでのみ使用できます。', ephemeral=True)
+        return
+    
+    staff_role = discord.utils.get(interaction.guild.roles, name="職員")
+    if not staff_role or staff_role not in interaction.user.roles:
+        await interaction.response.send_message('このコマンドは「職員」ロールを持つユーザーのみが使用できます。', ephemeral=True)
+        return
+
     # 権限チェック
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message('このコマンドは管理者権限が必要です。')
+        await interaction.response.send_message('このコマンドは管理者権限が必要です。', ephemeral=True)
         return
 
     try:
@@ -889,9 +959,19 @@ async def create_first_roll(interaction: discord.Interaction):
     semester="学期（数字）"
 )
 async def next_season(interaction: discord.Interaction, semester: int):
+    # チャンネルとロールのチェック
+    if "管理bot" not in interaction.channel.name:
+        await interaction.response.send_message('このコマンドは「管理bot」チャンネルでのみ使用できます。', ephemeral=True)
+        return
+    
+    staff_role = discord.utils.get(interaction.guild.roles, name="職員")
+    if not staff_role or staff_role not in interaction.user.roles:
+        await interaction.response.send_message('このコマンドは「職員」ロールを持つユーザーのみが使用できます。', ephemeral=True)
+        return
+
     # 権限チェック
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message('このコマンドは管理者権限が必要です。')
+        await interaction.response.send_message('このコマンドは管理者権限が必要です。', ephemeral=True)
         return
 
     try:
