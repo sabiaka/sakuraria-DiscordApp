@@ -378,7 +378,13 @@ async def create_reaction_roles_function(interaction: discord.Interaction, semes
         if teacher_role:
             teacher_roles.append(teacher_role)
     
-    await create_reaction_role_message(interaction.channel, teacher_roles, semester)
+    # 職員todoリストチャンネルを探して、職員用のリアクションロールを作成
+    staff_todo_channel = next((channel for channel in interaction.guild.text_channels if "職員todoリスト" in channel.name), None)
+    if staff_todo_channel:
+        await create_reaction_role_message(staff_todo_channel, teacher_roles, semester)
+        await interaction.followup.send("✅ 職員todoリストチャンネルに職員用のリアクションロールを作成しました。")
+    else:
+        await interaction.followup.send("⚠️ 職員todoリストチャンネルが見つかりませんでした。職員用のリアクションロールは作成されませんでした。")
 
     # 総合受付チャンネルを探して、クラス選択用のリアクションロールを作成
     reception_channel = next((channel for channel in interaction.guild.text_channels if "総合受付" in channel.name or "受付" in channel.name), None)
