@@ -192,18 +192,39 @@ async def hello(ctx):
     await ctx.send('こんにちは！')
 
 # カテゴリとチャンネルを作成するコマンド
-@bot.tree.command(name="gen", description="教員向けと生徒向けのカテゴリとチャンネルを作成します")
+@bot.tree.command(name="new_season", description="教員向けと生徒向けのカテゴリとチャンネルを作成します")
 @app_commands.describe(
     semester="学期（数字）",
     class_count="クラス数"
 )
-async def gen(interaction: discord.Interaction, semester: int, class_count: int):
+async def new_season(interaction: discord.Interaction, semester: int, class_count: int):
     # 権限チェック
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message('このコマンドは管理者権限が必要です。')
         return
 
     try:
+        # 既存の期のカテゴリをチェック（絵文字のバリエーションに対応）
+        teacher_category = discord.utils.get(interaction.guild.categories, name=f"👨‍🏫 {semester}期職員")
+        if not teacher_category:
+            teacher_category = discord.utils.get(interaction.guild.categories, name=f"👨🏫 {semester}期職員")
+        
+        student_category = discord.utils.get(interaction.guild.categories, name=f"👨‍🎓 {semester}期生徒")
+        if not student_category:
+            student_category = discord.utils.get(interaction.guild.categories, name=f"👨🎓 {semester}期生徒")
+        
+        if teacher_category or student_category:
+            await interaction.response.send_message(f'❌ {semester}期のカテゴリは既に存在します。')
+            return
+
+        # 既存の期のロールをチェック
+        semester_student_role = discord.utils.get(interaction.guild.roles, name=f"{semester}期生")
+        semester_teacher_role = discord.utils.get(interaction.guild.roles, name=f"{semester}期職員")
+        
+        if semester_student_role or semester_teacher_role:
+            await interaction.response.send_message(f'❌ {semester}期のロールは既に存在します。')
+            return
+
         # 処理開始を通知
         await interaction.response.send_message('チャンネルとロールを作成中です...')
         
@@ -231,7 +252,7 @@ async def gen(interaction: discord.Interaction, semester: int, class_count: int)
             )
             class_roles.extend([student_role, teacher_role])
         
-        # 教員用カテゴリの作成
+        # 教員用カテゴリの作成（絵文字のバリエーションに対応）
         teacher_category_name = f"👨‍🏫 {semester}期職員"
         overwrites_teacher_category = {
             interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
@@ -242,7 +263,7 @@ async def gen(interaction: discord.Interaction, semester: int, class_count: int)
             overwrites=overwrites_teacher_category
         )
         
-        # 生徒用カテゴリの作成
+        # 生徒用カテゴリの作成（絵文字のバリエーションに対応）
         student_category_name = f"👨‍🎓 {semester}期生徒"
         student_category = await interaction.guild.create_category(student_category_name)
         
@@ -350,12 +371,12 @@ async def gen(interaction: discord.Interaction, semester: int, class_count: int)
         await interaction.followup.send(error_details)
 
 # カテゴリとチャンネルを削除するコマンド
-@bot.tree.command(name="delete", description="指定した学期の教員向けと生徒向けカテゴリとチャンネルを削除します")
+@bot.tree.command(name="delete_season", description="指定した学期の教員向けと生徒向けカテゴリとチャンネルを削除します")
 @app_commands.describe(
     start_semester="削除開始学期（数字）",
     end_semester="削除終了学期（数字、省略可）"
 )
-async def delete(interaction: discord.Interaction, start_semester: int, end_semester: int = None):
+async def delete_season(interaction: discord.Interaction, start_semester: int, end_semester: int = None):
     # 権限チェック
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message('このコマンドは管理者権限が必要です。')
