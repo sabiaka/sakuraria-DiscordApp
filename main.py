@@ -307,14 +307,14 @@ async def create_channels_function(interaction: discord.Interaction, semester: i
         semester_teacher_role: discord.PermissionOverwrite(view_channel=True)
     }
     await interaction.guild.create_text_channel(
-        name=f"📢｜{semester}期連絡",
+        name=f"📗📢｜{semester}期連絡",
         category=student_category,
         overwrites=overwrites_semester_channel
     )
     
     # 教員用チャンネルの作成
     for i in range(1, class_count + 1):
-        channel_name = f"📝｜{semester}-{i}教員"
+        channel_name = f"📗📝｜{semester}-{i}教員"
         await interaction.guild.create_text_channel(
             name=channel_name,
             category=teacher_category
@@ -334,19 +334,19 @@ async def create_channels_function(interaction: discord.Interaction, semester: i
         
         # 雑談チャンネル
         await interaction.guild.create_text_channel(
-            name=f"💬｜{semester}-{i}雑談",
+            name=f"📗💬｜{semester}-{i}雑談",
             category=student_category,
             overwrites=overwrites_class_channel
         )
         # 写真チャンネル
         await interaction.guild.create_text_channel(
-            name=f"📸｜{semester}-{i}写真",
+            name=f"📗📸｜{semester}-{i}写真",
             category=student_category,
             overwrites=overwrites_class_channel
         )
         # 連絡チャンネル
         await interaction.guild.create_text_channel(
-            name=f"📢｜{semester}-{i}連絡",
+            name=f"📗📢｜{semester}-{i}連絡",
             category=student_category,
             overwrites=overwrites_class_channel
         )
@@ -626,7 +626,7 @@ async def delete_season(interaction: discord.Interaction, start_semester: int, e
             # リアクションロールのメッセージを検索
             # 検索対象のチャンネルを取得
             reception_channel = next((channel for channel in interaction.guild.text_channels if "総合受付" in channel.name or "受付" in channel.name), None)
-            admin_channel = next((channel for channel in interaction.guild.text_channels if "管理bot" in channel.name or "管理" in channel.name), None)
+            admin_channel = next((channel for channel in interaction.guild.text_channels if "職員todoリスト" in channel.name or "職員" in channel.name), None)
             target_channels = [ch for ch in [reception_channel, admin_channel] if ch is not None]
 
             if not target_channels:
@@ -801,6 +801,102 @@ async def create_first_roll(interaction: discord.Interaction):
             "❌ ボットに必要な権限がありません。\n"
             "必要な権限:\n"
             "- ロールの管理"
+        )
+        await interaction.followup.send(error_msg)
+    except Exception as e:
+        error_type = type(e).__name__
+        error_msg = str(e)
+        tb = traceback.format_exc()
+        error_details = (
+            f"❌ エラーが発生しました:\n"
+            f"エラーの種類: {error_type}\n"
+            f"エラーメッセージ: {error_msg}\n"
+            f"```\n{tb}\n```"
+        )
+        await interaction.followup.send(error_details)
+
+@bot.tree.command(name="next_season", description="指定した学期の生徒にOBロールを付与し、チャンネル名を更新します")
+@app_commands.describe(
+    semester="学期（数字）"
+)
+async def next_season(interaction: discord.Interaction, semester: int):
+    # 権限チェック
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message('このコマンドは管理者権限が必要です。')
+        return
+
+    try:
+        # 処理開始を通知
+        await interaction.response.send_message('OBロールの付与とチャンネル名の更新を開始します...')
+
+        # 期生ロールの存在確認
+        semester_student_role = discord.utils.get(interaction.guild.roles, name=f"{semester}期生")
+        if not semester_student_role:
+            await interaction.followup.send(f'❌ {semester}期生のロールが見つかりません。')
+            return
+
+        # OBロールの存在確認
+        ob_role = discord.utils.get(interaction.guild.roles, name="OB")
+        if not ob_role:
+            await interaction.followup.send('❌ OBロールが見つかりません。先に /create_first_roll コマンドを実行してください。')
+            return
+
+        # 期生ロールを持つメンバーを取得
+        members_with_role = semester_student_role.members
+        if not members_with_role:
+            await interaction.followup.send(f'⚠️ {semester}期生のロールを持つメンバーが見つかりません。処理を続行します。')
+            members_with_role = []  # 空のリストを設定して処理を続行
+
+        # 1期生の場合、既にOBロールを持っているかチェック
+        if semester == 1:
+            for member in members_with_role:
+                if ob_role in member.roles:
+                    await interaction.followup.send(f'❌ 1期生のメンバーは既にOBロールを持っています。このコマンドは実行できません。')
+                    return
+
+        # OBロールを付与
+        updated_members = []
+        for member in members_with_role:
+            if ob_role not in member.roles:
+                await member.add_roles(ob_role)
+                updated_members.append(member.name)
+
+        # チャンネル名の更新
+        updated_channels = []
+        for channel in interaction.guild.text_channels:
+            if channel.name.startswith(f"📗") and str(semester) in channel.name:
+                new_name = channel.name.replace("📗", "📙", 1)
+                await channel.edit(name=new_name)
+                updated_channels.append(channel.name)
+
+        # 結果を報告
+        result_message = []
+        
+        if updated_members:
+            result_message.append(
+                f'✅ 以下のメンバーにOBロールを付与しました：\n'
+                f'{chr(10).join([f"- {name}" for name in updated_members])}'
+            )
+        else:
+            if members_with_role:  # メンバーが存在する場合のみメッセージを追加
+                result_message.append(f'ℹ️ {semester}期生のメンバーは既にOBロールを持っています。')
+
+        if updated_channels:
+            result_message.append(
+                f'✅ 以下のチャンネルの名前を更新しました：\n'
+                f'{chr(10).join([f"- {name}" for name in updated_channels])}'
+            )
+        else:
+            result_message.append(f'⚠️ 更新対象のチャンネルが見つかりませんでした。')
+
+        await interaction.followup.send("\n\n".join(result_message))
+
+    except discord.Forbidden:
+        error_msg = (
+            "❌ ボットに必要な権限がありません。\n"
+            "必要な権限:\n"
+            "- ロールの管理\n"
+            "- チャンネルの管理"
         )
         await interaction.followup.send(error_msg)
     except Exception as e:
