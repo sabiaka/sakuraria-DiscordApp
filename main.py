@@ -24,7 +24,7 @@ reaction_roles = {}
 async def create_class_selection_message(channel, semester, class_count):
     # メッセージの内容を作成
     content = f"## {semester}期のクラス選択\n"
-    content += "以下のリアクションをクリックして、あなたのクラスを選択してください：\n\n"
+    content += f"<@&{discord.utils.get(channel.guild.roles, name='ロール未付与').id}> 以下のリアクションをクリックして、あなたのクラスを選択してください：\n\n"
     
     # ロールと絵文字の対応を設定
     role_emojis = {}
@@ -118,6 +118,12 @@ async def on_raw_reaction_add(payload):
                         semester_role = discord.utils.get(guild.roles, name=f"{semester}期職員")
                         if semester_role:
                             await member.add_roles(semester_role)
+                    
+                    # ロール未付与ロールを削除
+                    unassigned_role = discord.utils.get(guild.roles, name="ロール未付与")
+                    if unassigned_role and unassigned_role in member.roles:
+                        await member.remove_roles(unassigned_role)
+                    
                     # 管理用チャンネルを取得
                     admin_channel = next((channel for channel in guild.text_channels if "管理bot" in channel.name), None)
                     if admin_channel:
@@ -159,6 +165,12 @@ async def on_raw_reaction_remove(payload):
                         semester_role = discord.utils.get(guild.roles, name=f"{semester}期職員")
                         if semester_role:
                             await member.remove_roles(semester_role)
+                    
+                    # ロール未付与ロールを付与
+                    unassigned_role = discord.utils.get(guild.roles, name="ロール未付与")
+                    if unassigned_role and unassigned_role not in member.roles:
+                        await member.add_roles(unassigned_role)
+                    
                     # 管理用チャンネルを取得
                     admin_channel = next((channel for channel in guild.text_channels if "管理bot" in channel.name), None)
                     if admin_channel:
@@ -424,6 +436,11 @@ async def delete(interaction: discord.Interaction, start_semester: int, end_seme
                         )
                         
                         if is_reaction_role:
+                            print(f"\n削除対象のリアクションロールメッセージを発見:")
+                            print(f"チャンネル: {channel.name}")
+                            print(f"メッセージID: {message.id}")
+                            print(f"内容:\n{message.content}\n")
+                            
                             # リアクションロールの設定を確認（設定の有無に関わらず削除対象に追加）
                             if message.id in reaction_roles:
                                 del reaction_roles[message.id]
