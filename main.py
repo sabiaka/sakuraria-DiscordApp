@@ -56,7 +56,8 @@ async def main():
             await bot.load_extension('cogs.categories')
             await bot.load_extension('cogs.channels')
             await bot.load_extension('cogs.reaction_roles')
-            await bot.load_extension('cogs.seasons')  # 新しいCogを読み込む
+            await bot.load_extension('cogs.seasons')
+            await bot.load_extension('cogs.events')  # 新しいイベントCogを読み込む
             print("拡張機能の読み込みが完了しました")
             
             # Botを起動
