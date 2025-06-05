@@ -71,6 +71,24 @@ class Events(commands.Cog):
                     name=channel_name,
                     category=category
                 )
+                # ロール付与チャンネルに説明メッセージを投稿
+                if "ロール付与" in channel_name:
+                    embed = discord.Embed(
+                        title="🎯 イベントロールの付与方法",
+                        description=f"このチャンネルで以下のコマンドを使用して、`{event_name}`のメンバーに追加できます：",
+                        color=discord.Color.blue()
+                    )
+                    embed.add_field(
+                        name="コマンド",
+                        value=f"`/add_role [ユーザー名]`",
+                        inline=False
+                    )
+                    embed.add_field(
+                        name="説明",
+                        value=f"上記のコマンドを実行すると、指定したユーザーに`{event_name}`ロールが付与されます。",
+                        inline=False
+                    )
+                    await channel.send(embed=embed)
             channels.append(channel)
 
         return category, channels, event_role
