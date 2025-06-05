@@ -13,7 +13,7 @@ if not DISCORD_TOKEN:
 COMMAND_PREFIX = '!'
 
 # 権限チェックの設定
-ADMIN_CHANNEL_NAME = "デバッグルーム"
+ADMIN_CHANNEL_NAME = "📕🤖｜管理bot"
 STAFF_ROLE_NAME = "管理者"
 UNASSIGNED_ROLE_NAME = "ロール未付与"
 
@@ -21,4 +21,10 @@ UNASSIGNED_ROLE_NAME = "ロール未付与"
 REACTION_ROLE_CHANNELS = {
     "staff": "職員todoリスト",  # 職員用リアクションロールのチャンネル名
     "student": "総合受付"      # 生徒用リアクションロールのチャンネル名
+}
+
+# イベントコマンドの設定
+EVENT_SETTINGS = {
+    "admin_channel": "デバッグルーム",  # イベントコマンドを実行できるチャンネル名
+    "admin_role": "イベント管理者"    # イベントコマンドを実行できるロール名
 } 

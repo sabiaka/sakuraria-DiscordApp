@@ -4,6 +4,29 @@ from discord.ext import commands
 
 from utils.checks import is_admin_channel, has_staff_role, is_administrator
 from utils.helpers import format_error_message
+from config.settings import EVENT_SETTINGS
+
+def is_event_admin_channel():
+    async def predicate(interaction: discord.Interaction) -> bool:
+        if interaction.channel.name != EVENT_SETTINGS["admin_channel"]:
+            await interaction.response.send_message(
+                f"❌ このコマンドは `{EVENT_SETTINGS['admin_channel']}` チャンネルでのみ実行できます。",
+                ephemeral=True
+            )
+            return False
+        return True
+    return app_commands.check(predicate)
+
+def has_event_admin_role():
+    async def predicate(interaction: discord.Interaction) -> bool:
+        if not any(role.name == EVENT_SETTINGS["admin_role"] for role in interaction.user.roles):
+            await interaction.response.send_message(
+                f"❌ このコマンドを実行するには `{EVENT_SETTINGS['admin_role']}` ロールが必要です。",
+                ephemeral=True
+            )
+            return False
+        return True
+    return app_commands.check(predicate)
 
 class Events(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -87,8 +110,8 @@ class Events(commands.Cog):
     @app_commands.describe(
         event_name="イベント名"
     )
-    @is_admin_channel()
-    @has_staff_role()
+    @is_event_admin_channel()
+    @has_event_admin_role()
     @is_administrator()
     async def create_event(self, interaction: discord.Interaction, event_name: str):
         try:
@@ -113,8 +136,8 @@ class Events(commands.Cog):
     @app_commands.describe(
         event_name="イベント名"
     )
-    @is_admin_channel()
-    @has_staff_role()
+    @is_event_admin_channel()
+    @has_event_admin_role()
     @is_administrator()
     async def delete_event(self, interaction: discord.Interaction, event_name: str):
         try:
