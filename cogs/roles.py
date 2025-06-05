@@ -34,7 +34,7 @@ class Roles(commands.Cog):
                 color=discord.Color.green()
             )
 
-    @app_commands.command(name="create_roles", description="指定した学期のロールを作成します")
+    @app_commands.command(name="sakuraria_create_roles", description="指定した学期のロールを作成します")
     @app_commands.describe(
         semester="学期（数字）",
         class_count="クラス数"
@@ -56,7 +56,7 @@ class Roles(commands.Cog):
         except Exception as e:
             await interaction.followup.send(format_error_message(e))
 
-    @app_commands.command(name="create_first_roll", description="職員とOBのロールを作成します")
+    @app_commands.command(name="sakuraria_create_first_roll", description="職員とOBのロールを作成します")
     @is_admin_channel()
     @has_staff_role()
     @is_administrator()

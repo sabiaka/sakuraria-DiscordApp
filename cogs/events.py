@@ -31,16 +31,17 @@ class Events(commands.Cog):
         # 3. チャンネルを作成
         channels = []
         channel_names = [
-            f"{event_name}-アナウンス",
-            f"{event_name}-相談",
-            f"{event_name}-ボイスチャンネル"
+            f"ログ-{event_name}",
+            f"ロール付与-{event_name}"
         ]
 
         for channel_name in channel_names:
-            if "ボイス" in channel_name:
-                channel = await guild.create_voice_channel(
+            if "ログ" in channel_name:
+                # フォーラムチャンネルを作成
+                channel = await guild.create_forum(
                     name=channel_name,
-                    category=category
+                    category=category,
+                    topic=f"{event_name}のログを記録するフォーラムです。"
                 )
             else:
                 channel = await guild.create_text_channel(
@@ -102,9 +103,8 @@ class Events(commands.Cog):
                 f'📁 カテゴリ\n'
                 f'  └ {event_name}\n'
                 f'💬 チャンネル\n'
-                f'  └ {event_name}-アナウンス\n'
-                f'  └ {event_name}-相談\n'
-                f'  └ {event_name}-ボイスチャンネル'
+                f'  └ ログ-{event_name}\n'
+                f'  └ ロール付与-{event_name}'
             )
         except Exception as e:
             await interaction.followup.send(format_error_message(e))
@@ -125,9 +125,8 @@ class Events(commands.Cog):
             confirm_message += f"📁 カテゴリ\n"
             confirm_message += f"  └ {event_name}\n"
             confirm_message += f"💬 チャンネル\n"
-            confirm_message += f"  └ {event_name}-アナウンス\n"
-            confirm_message += f"  └ {event_name}-相談\n"
-            confirm_message += f"  └ {event_name}-ボイスチャンネル\n"
+            confirm_message += f"  └ ログ-{event_name}\n"
+            confirm_message += f"  └ ロール付与-{event_name}\n"
             confirm_message += f"👥 ロール\n"
             confirm_message += f"  └ 🎯 {event_name}\n\n"
             confirm_message += f"⚠️ この操作は取り消せません。実行してよろしいですか？"

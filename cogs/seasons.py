@@ -10,7 +10,7 @@ class Seasons(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @app_commands.command(name="new_season", description="新しい期のカテゴリとチャンネルを作成します")
+    @app_commands.command(name="sakuraria_new_season", description="新しい期のカテゴリとチャンネルを作成します")
     @app_commands.describe(
         semester="学期（数字）",
         class_count="クラス数"
@@ -91,7 +91,7 @@ class Seasons(commands.Cog):
         except Exception as e:
             await interaction.followup.send(format_error_message(e))
 
-    @app_commands.command(name="delete_season", description="指定した期のカテゴリとチャンネルを削除します")
+    @app_commands.command(name="sakuraria_delete_season", description="指定した期のカテゴリとチャンネルを削除します")
     @app_commands.describe(
         start_semester="開始学期（数字）",
         end_semester="終了学期（数字、省略可）"

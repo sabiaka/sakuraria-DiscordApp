@@ -13,9 +13,9 @@ if not DISCORD_TOKEN:
 COMMAND_PREFIX = '!'
 
 # 権限チェックの設定
-ADMIN_CHANNEL_NAME = "botテスト場"
-STAFF_ROLE_NAME = "管理者テスト"
-UNASSIGNED_ROLE_NAME = "ロール未付与テスト"
+ADMIN_CHANNEL_NAME = "デバッグルーム"
+STAFF_ROLE_NAME = "管理者"
+UNASSIGNED_ROLE_NAME = "ロール未付与"
 
 # リアクションロールの設定
 REACTION_ROLE_CHANNELS = {
