@@ -210,5 +210,53 @@ class Events(commands.Cog):
         except Exception as e:
             await interaction.followup.send(format_error_message(e))
 
+    @app_commands.command(name="add_role", description="イベントメンバーにロールを付与します")
+    @app_commands.describe(
+        user="ロールを付与するユーザー"
+    )
+    @has_event_admin_role()
+    async def add_role(self, interaction: discord.Interaction, user: discord.Member):
+        try:
+            # 現在のチャンネル名からイベント名を取得
+            channel_name = interaction.channel.name
+            if not channel_name.startswith(EVENT_SETTINGS["role_assignment_channel_prefix"]):
+                await interaction.response.send_message(
+                    f"❌ このコマンドは `{EVENT_SETTINGS['role_assignment_channel_prefix']}` で始まるチャンネルでのみ使用できます。",
+                    ephemeral=True
+                )
+                return
+
+            event_name = channel_name.replace(EVENT_SETTINGS["role_assignment_channel_prefix"], "")
+            event_role = discord.utils.get(interaction.guild.roles, name=f"🎯 {event_name}")
+
+            if not event_role:
+                await interaction.response.send_message(
+                    f"❌ `{event_name}`のイベントロールが見つかりません。",
+                    ephemeral=True
+                )
+                return
+
+            # ユーザーが既にロールを持っているかチェック
+            if event_role in user.roles:
+                await interaction.response.send_message(
+                    f"❌ {user.mention} は既に `{event_name}` ロールを持っています。",
+                    ephemeral=True
+                )
+                return
+
+            # ユーザーにロールを付与
+            await user.add_roles(event_role)
+            
+            # 成功メッセージを送信
+            await interaction.response.send_message(
+                f"✅ {user.mention} に `{event_name}` ロールを付与しました。"
+            )
+
+        except Exception as e:
+            await interaction.response.send_message(
+                format_error_message(e),
+                ephemeral=True
+            )
+
 async def setup(bot: commands.Bot):
     await bot.add_cog(Events(bot)) 

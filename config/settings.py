@@ -26,5 +26,6 @@ REACTION_ROLE_CHANNELS = {
 # イベントコマンドの設定
 EVENT_SETTINGS = {
     "admin_channel": "デバッグルーム",  # イベントコマンドを実行できるチャンネル名
-    "admin_role": "イベント管理者"    # イベントコマンドを実行できるロール名
+    "admin_role": "イベント管理者",    # イベントコマンドを実行できるロール名
+    "role_assignment_channel_prefix": "ロール付与-"  # ロール付与コマンドを実行できるチャンネルのプレフィックス
 } 
