@@ -75,17 +75,17 @@ class Events(commands.Cog):
                 if "ロール付与" in channel_name:
                     embed = discord.Embed(
                         title="🎯 イベントロールの付与方法",
-                        description=f"このチャンネルで以下のコマンドを使用して、`{event_name}`のメンバーに追加できます：",
+                        description=f"このチャンネルで以下のコマンドを使用して、`{event_name}`のメンバーを管理できます：",
                         color=discord.Color.blue()
                     )
                     embed.add_field(
                         name="コマンド",
-                        value=f"`/add_role [ユーザー名]`",
+                        value=f"`/add_role [ユーザー名]`\n`/remove_role [ユーザー名]`",
                         inline=False
                     )
                     embed.add_field(
                         name="説明",
-                        value=f"上記のコマンドを実行すると、指定したユーザーに`{event_name}`ロールが付与されます。",
+                        value=f"`/add_role` - 指定したユーザーに`{event_name}`ロールを付与します。\n`/remove_role` - 指定したユーザーから`{event_name}`ロールを削除します。",
                         inline=False
                     )
                     await channel.send(embed=embed)
@@ -250,6 +250,54 @@ class Events(commands.Cog):
             # 成功メッセージを送信
             await interaction.response.send_message(
                 f"✅ {user.mention} に `{event_name}` ロールを付与しました。"
+            )
+
+        except Exception as e:
+            await interaction.response.send_message(
+                format_error_message(e),
+                ephemeral=True
+            )
+
+    @app_commands.command(name="remove_role", description="イベントメンバーからロールを削除します")
+    @app_commands.describe(
+        user="ロールを削除するユーザー"
+    )
+    @has_event_admin_role()
+    async def remove_role(self, interaction: discord.Interaction, user: discord.Member):
+        try:
+            # 現在のチャンネル名からイベント名を取得
+            channel_name = interaction.channel.name
+            if not channel_name.startswith(EVENT_SETTINGS["role_assignment_channel_prefix"]):
+                await interaction.response.send_message(
+                    f"❌ このコマンドは `{EVENT_SETTINGS['role_assignment_channel_prefix']}` で始まるチャンネルでのみ使用できます。",
+                    ephemeral=True
+                )
+                return
+
+            event_name = channel_name.replace(EVENT_SETTINGS["role_assignment_channel_prefix"], "")
+            event_role = discord.utils.get(interaction.guild.roles, name=f"🎯 {event_name}")
+
+            if not event_role:
+                await interaction.response.send_message(
+                    f"❌ `{event_name}`のイベントロールが見つかりません。",
+                    ephemeral=True
+                )
+                return
+
+            # ユーザーがロールを持っているかチェック
+            if event_role not in user.roles:
+                await interaction.response.send_message(
+                    f"❌ {user.mention} は `{event_name}` ロールを持っていません。",
+                    ephemeral=True
+                )
+                return
+
+            # ユーザーからロールを削除
+            await user.remove_roles(event_role)
+            
+            # 成功メッセージを送信
+            await interaction.response.send_message(
+                f"✅ {user.mention} から `{event_name}` ロールを削除しました。"
             )
 
         except Exception as e:
