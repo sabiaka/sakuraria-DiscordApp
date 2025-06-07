@@ -52,12 +52,14 @@ async def main():
         try:
             # 拡張機能を読み込む
             print("拡張機能を読み込んでいます...")
-            await bot.load_extension('cogs.roles')
-            await bot.load_extension('cogs.categories')
-            await bot.load_extension('cogs.channels')
-            await bot.load_extension('cogs.reaction_roles')
-            await bot.load_extension('cogs.seasons')
-            await bot.load_extension('cogs.events')  # 新しいイベントCogを読み込む
+            # sakuraria系のコマンドを読み込む
+            await bot.load_extension('cogs.sakuraria.roles')
+            await bot.load_extension('cogs.sakuraria.categories')
+            await bot.load_extension('cogs.sakuraria.channels')
+            await bot.load_extension('cogs.sakuraria.reaction_roles')
+            await bot.load_extension('cogs.sakuraria.seasons')
+            # イベント系のコマンドを読み込む
+            await bot.load_extension('cogs.events')
             print("拡張機能の読み込みが完了しました")
             
             # Botを起動
