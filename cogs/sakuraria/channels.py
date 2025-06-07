@@ -56,7 +56,7 @@ class Channels(commands.Cog):
                 overwrites=overwrites_class_channel
             )
 
-    @app_commands.command(name="create_channels", description="指定した学期のチャンネルを作成します")
+    @app_commands.command(name="sakuraria_create_channels", description="指定した学期のチャンネルを作成します")
     @app_commands.describe(
         semester="学期（数字）",
         class_count="クラス数"
@@ -79,7 +79,7 @@ class Channels(commands.Cog):
         except Exception as e:
             await interaction.followup.send(format_error_message(e))
 
-    @app_commands.command(name="next_season", description="指定した学期の生徒にOBロールを付与し、チャンネル名を更新します")
+    @app_commands.command(name="sakuraria_next_season", description="指定した学期の生徒にOBロールを付与し、チャンネル名を更新します")
     @app_commands.describe(
         semester="学期（数字）"
     )

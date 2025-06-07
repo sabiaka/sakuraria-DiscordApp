@@ -103,7 +103,7 @@ class ReactionRoles(commands.Cog):
         else:
             raise Exception(f"生徒用リアクションロールチャンネル（{REACTION_ROLE_CHANNELS['student']}）が見つかりません。")
 
-    @app_commands.command(name="create_reaction_roles", description="指定した学期のリアクションロールメッセージを作成します")
+    @app_commands.command(name="sakuraria_create_reaction_roles", description="指定した学期のリアクションロールメッセージを作成します")
     @app_commands.describe(
         semester="学期（数字）",
         class_count="クラス数"

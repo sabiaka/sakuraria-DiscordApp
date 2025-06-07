@@ -29,7 +29,7 @@ class Categories(commands.Cog):
         student_category_name = f"👨‍🎓 {semester}期生徒"
         await guild.create_category(student_category_name)
 
-    @app_commands.command(name="create_categories", description="指定した学期のカテゴリを作成します")
+    @app_commands.command(name="sakuraria_create_categories", description="指定した学期のカテゴリを作成します")
     @app_commands.describe(
         semester="学期（数字）"
     )
